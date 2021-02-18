@@ -49,7 +49,7 @@ COLLECT_LTO_WRAPPER=/opt/toolchains/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linu
 ...
 gcc version 6.3.1 20170109 (Linaro GCC 6.3-2017.02)
 Cloning kernel from Git
-$ git clone https://github.com/hardkernel/linux.git -b odroidgoA-4.4.y
+$ git clone https://github.com/Retro-Arena/linux-mainline-kernel
 Building kernel
 If you use the latest kernel source codes of Hardkernel Github after December 2020,
 use odroidgoa_defconfig.

@@ -26,7 +26,7 @@ Before building kernel for Odroid Go advance on Ubuntu desktop, you need to inst
 
 $ sudo apt-get update &&\
 sudo apt-get install -y git lzop build-essential gcc \
-    bc libncurses5-dev libc6-i386 lib32stdc++6 zlib1g:i386
+bc libncurses5-dev libc6-i386 lib32stdc++6 zlib1g:i386
 Toolchain (6.3.1)
 Download toolchain and extract the tarball to /opt/toolchains/.
 

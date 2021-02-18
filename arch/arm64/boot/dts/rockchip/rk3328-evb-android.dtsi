@@ -1,99 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
- * Copyright (c) 2016 Fuzhou Rockchip Electronics Co., Ltd
+ * Copyright (c) 2017 Fuzhou Rockchip Electronics Co., Ltd
  *
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
- *
- *  a) This library is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License as
- *     published by the Free Software Foundation; either version 2 of the
- *     License, or (at your option) any later version.
- *
- *     This library is distributed in the hope that it will be useful,
- *     but WITHOUT ANY WARRANTY; without even the implied warranty of
- *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *     GNU General Public License for more details.
- *
- * Or, alternatively,
- *
- *  b) Permission is hereby granted, free of charge, to any person
- *     obtaining a copy of this software and associated documentation
- *     files (the "Software"), to deal in the Software without
- *     restriction, including without limitation the rights to use,
- *     copy, modify, merge, publish, distribute, sublicense, and/or
- *     sell copies of the Software, and to permit persons to whom the
- *     Software is furnished to do so, subject to the following
- *     conditions:
- *
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- *     OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- *     HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- *     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- *     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- *     OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/dts-v1/;
 #include "rk3328.dtsi"
+#include "rk3328-android.dtsi"
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Rockchip RK3328 EVB";
-	compatible = "rockchip,rk3328-evb", "rockchip,rk3328";
-
-	chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xff130000 swiotlb=1 kpti=0 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootwait coherent_pool=1m";
-	};
-
-	fiq-debugger {
-		compatible = "rockchip,fiq-debugger";
-		rockchip,serial-id = <2>;
-		rockchip,signal-irq = <159>;
-		rockchip,wake-irq = <0>;
-		/* If enable uart uses irq instead of fiq */
-		rockchip,irq-mode-enable = <0>;
-		rockchip,baudrate = <1500000>;  /* Only 115200 and 1500000 */
-		interrupts = <GIC_SPI 127 IRQ_TYPE_LEVEL_LOW>;
-		status = "okay";
-	};
-
-	adc-keys {
-		compatible = "adc-keys";
-		io-channels = <&saradc 0>;
-		io-channel-names = "buttons";
-		poll-interval = <100>;
-		keyup-threshold-microvolt = <1800000>;
-
-		vol-up-key {
-			linux,code = <KEY_VOLUMEUP>;
-			label = "volume up";
-			press-threshold-microvolt = <18000>;
-		};
-	};
-
 	gmac_clkin: external-gmac-clock {
 		compatible = "fixed-clock";
 		clock-frequency = <125000000>;
 		clock-output-names = "gmac_clkin";
 		#clock-cells = <0>;
-	};
-
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		drm_logo: drm-logo@00000000 {
-			compatible = "rockchip,drm-logo";
-			reg = <0x0 0x0 0x0 0x0>;
-		};
 	};
 
 	sdio_pwrseq: sdio-pwrseq {
@@ -114,7 +34,7 @@
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
 		simple-audio-card,mclk-fs = <256>;
-		simple-audio-card,name = "rockchip,rk3328";
+		simple-audio-card,name = "rockchip-rk3328";
 		simple-audio-card,cpu {
 			sound-dai = <&i2s1>;
 		};
@@ -127,7 +47,7 @@
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
 		simple-audio-card,mclk-fs = <128>;
-		simple-audio-card,name = "rockchip,hdmi";
+		simple-audio-card,name = "rockchip-hdmi";
 		simple-audio-card,cpu {
 			sound-dai = <&i2s0>;
 		};
@@ -138,7 +58,7 @@
 
 	spdif-sound {
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "rockchip,spdif";
+		simple-audio-card,name = "rockchip-spdif";
 		simple-audio-card,cpu {
 			sound-dai = <&spdif>;
 		};
@@ -199,6 +119,19 @@
 		#clock-cells = <0>;
 	};
 
+	wireless-bluetooth {
+		compatible = "bluetooth-platdata";
+		clocks = <&rk805 1>;
+		clock-names = "ext_clock";
+		uart_rts_gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default", "rts_gpio";
+		pinctrl-0 = <&uart0_rts>;
+		pinctrl-1 = <&uart0_gpios>;
+		BT,power_gpio = <&gpio1 21 GPIO_ACTIVE_HIGH>;
+		BT,wake_host_irq = <&gpio1 26 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
 	wireless-wlan {
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
@@ -218,25 +151,13 @@
 	cpu-supply = <&vdd_arm>;
 };
 
-&dmc {
-	center-supply = <&vdd_logic>;
+&dfi {
 	status = "okay";
 };
 
-&display_subsystem {
-	logo-memory-region = <&drm_logo>;
+&dmc {
+	center-supply = <&vdd_logic>;
 	status = "okay";
-
-	route {
-		route_hdmi: route-hdmi {
-			status = "okay";
-			logo,uboot = "logo.bmp";
-			logo,kernel = "logo_kernel.bmp";
-			logo,mode = "fullscreen";
-			charge_logo,mode = "fullscreen";
-			connect = <&vop_out_hdmi>;
-		};
-	};
 };
 
 &emmc {
@@ -291,6 +212,13 @@
 };
 
 &hdmiphy {
+	rockchip,phy-table =
+		<165000000 0x07 0x0a 0x0a 0x0a 0x00 0x00 0x08
+			   0x08 0x08 0x00 0xac 0xcc 0xcc 0xcc>,
+		<340000000 0x0b 0x0d 0x0d 0x0d 0x07 0x15 0x08
+			   0x08 0x08 0x3f 0xac 0xcc 0xcd 0xdd>,
+		<594000000 0x10 0x1a 0x1a 0x1a 0x07 0x15 0x08
+			   0x08 0x08 0x00 0xac 0xcc 0xcc 0xcc>;
 	status = "okay";
 };
 
@@ -305,7 +233,6 @@
 		interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pmic_int_l>;
-		rockchip,system-power-controller;
 		wakeup-source;
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -313,7 +240,7 @@
 		clock-output-names = "rk805-clkout1", "rk805-clkout2";
 
 		rtc {
-			status = "disabled";
+			status = "okay";
 		};
 
 		pwrkey {
@@ -349,6 +276,7 @@
 			vdd_arm: RK805_DCDC2 {
 				regulator-compatible = "RK805_DCDC2";
 				regulator-name = "vdd_arm";
+				regulator-init-microvolt = <1225000>;
 				regulator-min-microvolt = <712500>;
 				regulator-max-microvolt = <1450000>;
 				regulator-initial-mode = <0x1>;
@@ -431,6 +359,14 @@
 	};
 };
 
+&secure_memory {
+	/*
+	 * enable like this:
+	 * reg = <0x0 0x20000000 0x0 0x10000000>;
+	 */
+	reg = <0x0 0x20000000 0x0 0x0>;
+};
+
 &h265e {
 	status = "okay";
 };
@@ -443,6 +379,14 @@
 
 &i2s1 {
 	#sound-dai-cells = <0>;
+	status = "okay";
+};
+
+&iep {
+	status = "okay";
+};
+
+&iep_mmu {
 	status = "okay";
 };
 
@@ -484,13 +428,20 @@
 				<0 RK_PD3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+
+	wireless-bluetooth {
+		uart0_gpios: uart0-gpios {
+		rockchip,pins =
+			<1 10 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
 };
 
 &pwm3 {
 	status = "okay";
-	compatible = "rockchip,remotectl-pwm";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pwmir_pin>;
+	compatible = "rockchip,remotectl-pwm";
 	remote_pwm_id = <3>;
 	handle_cpu_id = <1>;
 	remote_support_psci = <1>;
@@ -525,31 +476,37 @@
 	ir_key2 {
 		rockchip,usercode = <0xff00>;
 		rockchip,key_table =
-			<0x39	KEY_POWER>,
-			<0x73	KEY_MUTE>,
-			<0xa4	KEY_PLAYPAUSE>,
-			<0x75	KEY_VOLUMEDOWN>,
-			<0x77	KEY_VOLUMEUP>,
-			<0x7d	KEY_MENU>,
 			<0xf9	KEY_HOME>,
-			<0x5f	KEY_BACK>,
+			<0xbf	KEY_BACK>,
+			<0xfb	KEY_MENU>,
+			<0xaa	KEY_REPLY>,
 			<0xb9	KEY_UP>,
 			<0xe9	KEY_DOWN>,
 			<0xb8	KEY_LEFT>,
 			<0xea	KEY_RIGHT>,
-			<0xaa	KEY_REPLY>,
-			<0x55	KEY_1>,
-			<0x5b	KEY_2>,
-			<0xf8	KEY_3>,
-			<0x57	KEY_4>,
-			<0xed	KEY_5>,
-			<0xee	KEY_6>,
-			<0x59	KEY_7>,
-			<0xf1	KEY_8>,
-			<0xf2	KEY_9>,
-			<0xe0	KEY_BACKSPACE>,
-			<0x79	KEY_0>,
-			<0xa4	KEY_SETUP>;
+			<0xeb	KEY_VOLUMEDOWN>,
+			<0xef	KEY_VOLUMEUP>,
+			<0xf7	KEY_MUTE>,
+			<0xe7	KEY_POWER>,
+			<0xfc	KEY_POWER>,
+			<0xa9	KEY_VOLUMEDOWN>,
+			<0xa8	KEY_PLAYPAUSE>,
+			<0xe0	KEY_VOLUMEDOWN>,
+			<0xa5	KEY_VOLUMEDOWN>,
+			<0xab	183>,
+			<0xb7	388>,
+			<0xe8	388>,
+			<0xf8	184>,
+			<0xaf	185>,
+			<0xed	KEY_VOLUMEDOWN>,
+			<0xee	186>,
+			<0xb3	KEY_VOLUMEDOWN>,
+			<0xf1	KEY_VOLUMEDOWN>,
+			<0xf2	KEY_VOLUMEDOWN>,
+			<0xf3	KEY_SEARCH>,
+			<0xb4	KEY_VOLUMEDOWN>,
+			<0xa4	KEY_SETUP>,
+			<0xbe	KEY_SEARCH>;
 	};
 
 	ir_key3 {
@@ -590,8 +547,8 @@
 };
 
 &rkvdec {
-	vcodec-supply = <&vdd_logic>;
 	status = "okay";
+	vcodec-supply = <&vdd_logic>;
 };
 
 &rockchip_suspend {
@@ -599,9 +556,10 @@
 	rockchip,virtual-poweroff = <1>;
 };
 
-&saradc {
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_xfer &uart0_cts>;
 	status = "okay";
-	vref-supply = <&vdd_18>;
 };
 
 &sdio {
@@ -610,13 +568,14 @@
 	cap-sdio-irq;
 	disable-wp;
 	keep-power-in-suspend;
-	max-frequency = <150000000>;
+	max-frequency = <125000000>;
 	mmc-pwrseq = <&sdio_pwrseq>;
 	non-removable;
 	num-slots = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc1_bus4 &sdmmc1_cmd &sdmmc1_clk>;
 	supports-sdio;
+	sd-uhs-sdr104;
 	status = "okay";
 };
 
@@ -636,10 +595,29 @@
 
 &spdif {
 	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&spdifm2_tx>;
 	status = "okay";
 };
 
+&threshold {
+	temperature = <90000>; /* millicelsius */
+};
+
+&target {
+	temperature = <105000>; /* millicelsius */
+};
+
+&soc_crit {
+	temperature = <115000>; /* millicelsius */
+};
+
 &tsadc {
+	rockchip,hw-tshut-temp = <120000>;
+	status = "okay";
+};
+
+&tve {
 	status = "okay";
 };
 

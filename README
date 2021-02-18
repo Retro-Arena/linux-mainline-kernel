@@ -17,5 +17,107 @@ Please read the Documentation/process/changes.rst file, as it contains the
 requirements for building and running the kernel, and information about
 the problems which may result by upgrading your kernel.
 
-This is a custom fork by Steven Laminger of Retro Arena and The Tech Toy Tinker Company to attempt to 
+*This is a custom fork by Steven Laminger of Retro Arena and The Tech Toy Tinker Company to attempt to 
 update the Odroid Go Advance and Odroid Go Super kernel from 4.4 to 5.9
+
+Cross Compile - HOST-PC/Ubuntu
+Required packages
+Before building kernel for Odroid Go advance on Ubuntu desktop, you need to install the required packages as follows.
+
+$ sudo apt-get update &&\
+sudo apt-get install -y git lzop build-essential gcc \
+    bc libncurses5-dev libc6-i386 lib32stdc++6 zlib1g:i386
+Toolchain (6.3.1)
+Download toolchain and extract the tarball to /opt/toolchains/.
+
+$ sudo mkdir -p /opt/toolchains &&\
+wget https://releases.linaro.org/components/toolchain/binaries/6.3-2017.05/aarch64-linux-gnu/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu.tar.xz &&\
+sudo tar Jxvf gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu.tar.xz -C /opt/toolchains/
+To set up information for compilation, paste below lines to $HOME/.bashrc.
+
+export ARCH=arm64
+export CROSS_COMPILE=aarch64-linux-gnu-
+export PATH=/opt/toolchains/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin/:$PATH
+Execute the below command to apply the setting.
+
+$ source ~/.bashrc
+Check the toolchain version to confirm compatibility.
+
+$ aarch64-linux-gnu-gcc -v
+...
+COLLECT_LTO_WRAPPER=/opt/toolchains/gcc-linaro-6.3.1-2017.02-x86_64_aarch64-linux-gnu/bin/../libexec/gcc/aarch64-linux-gnu/6.3.1/lto-wrapper
+...
+gcc version 6.3.1 20170109 (Linaro GCC 6.3-2017.02)
+Cloning kernel from Git
+$ git clone https://github.com/hardkernel/linux.git -b odroidgoA-4.4.y
+Building kernel
+If you use the latest kernel source codes of Hardkernel Github after December 2020,
+use odroidgoa_defconfig.
+https://github.com/hardkernel/linux/commit/6cd3fd65eb26aea3e2f005c8a2d0cfe382dcf5a8
+
+$ cd linux
+$ make odroidgoa_defconfig
+Or with old version,
+
+$ cd linux
+$ make odroidgo2_defconfig
+
+If memory and disk size are enough and it has no other tasks, run 'make -j $(expr $(expr $(nproc) \* 6) \/ 5)' instead of 'make' for quick compilation.
+
+$ make [-j4]
+Once kernel build is done, you will have Image and dtb files as following.
+$ ls arch/arm64/boot/Image
+ 
+arch/arm64/boot/Image
+rk3326-odroidgo2-linux.dtb : dtb for OGA rev1.0
+rk3326-odroidgo2-linux-v11.dtb : dtb for OGA-BE, rev1.1
+rk3326-odroidgo3-linux.dtb : dtb for OGS
+$ ls arch/arm64/boot/dts/rockchip/rk3326-odroidgo*.dtb 
+ 
+arch/arm64/boot/dts/rockchip/rk3326-odroidgo2-linux.dtb
+arch/arm64/boot/dts/rockchip/rk3326-odroidgo2-linux-v11.dtb
+arch/arm64/boot/dts/rockchip/rk3326-odroidgo3-linux.dtb
+Installation
+Linux
+This explanation assume that your USB memory CARD reader is assigned at /dev/sdc.
+Please check the actual node carefully on your PC environment.
+
+1. Plug the Boot-Device(eMMC or SD) into the USB memory CARD reader and Connect the USB memory CARD reader to your HOST PC(Linux OS).
+
+2. Copy the Image and DT(rk3326-odroidgo2-linux.dtb & rk3326-odroidgo2-linux-v11.dtb) to the FAT partition(1st partition) in the Boot-Device.
+
+$ mkdir -p mount
+$ sudo mount /dev/sdc1 ./mount
+$ sudo cp arch/arm64/boot/Image arch/arm64/boot/dts/rockchip/rk3326-odroidgo2-linux*.dtb ./mount && sync && sudo umount ./mount
+3. Copy the driver modules to the EXT4 partition(2nd partition) in the Boot-Device.
+
+$ sudo mount /dev/sdc2 ./mount
+$ sudo make modules_install ARCH=arm64 INSTALL_MOD_PATH=./mount && sync && sudo umount ./mount
+$ rm -rf mount
+PCB revision detection logic using u-boot and boot.ini
+To detect HW revision automatically with a single OS image, the latest u-boot version has a detection logic using hwrev environment.
+hwrev 'v10' : ODROID-GO Advance 1st version (rev 1.0)
+hwrev 'v11' : ODROID-GO Advance Black Edition (rev 1.1)
+hwrev 'v10-go3' : ODROID-GO Super
+u-boot
+https://github.com/hardkernel/u-boot/blob/odroidgoA-v2017.09/cmd/hwrev.c#L22
+
+boot.ini sample
+And here is a sample of boot.ini.
+if test ${hwrev} = 'v11'; then
+load mmc 1:1 ${dtb_loadaddr} rk3326-odroidgo2-linux-v11.dtb
+elif test ${hwrev} = 'v10-go3'; then
+load mmc 1:1 ${dtb_loadaddr} rk3326-odroidgo3-linux.dtb
+else
+load mmc 1:1 ${dtb_loadaddr} rk3326-odroidgo2-linux.dtb
+fi
+https://forum.odroid.com/viewtopic.php?f=187&t=38629&start=100#p292898
+
+Base OS Image
+The Ubuntu ES Image (OS Image, v2.0) includes the logic of u-boot and boot.ini.
+https://wiki.odroid.com/odroid_go_advance/os_image/ubuntu_es#v20
+
+If you use a older Ubuntu ES Image, please run the following commands to update u-boot, boot.ini and kernel packages.
+$ sudo apt update
+$ sudo apt upgrade -y
+$ sudo reboot
